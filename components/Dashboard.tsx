@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Invoice, Product } from '../types';
-import { analyzeBusiness } from '../services/geminiService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { TrendingUp, Users, Package, Clock, ShieldCheck, BrainCircuit } from 'lucide-react';
+import { TrendingUp, Users, Package, Clock, ShieldCheck } from 'lucide-react';
 
 interface Props {
   invoices: Invoice[];
@@ -12,21 +11,6 @@ interface Props {
 }
 
 const Dashboard: React.FC<Props> = ({ invoices, products, onNewSale }) => {
-  const [insights, setInsights] = useState<string[]>([]);
-  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-
-  useEffect(() => {
-    const fetchInsights = async () => {
-      if (invoices.length > 0) {
-        setIsLoadingInsights(true);
-        const res = await analyzeBusiness(invoices, products);
-        setInsights(res);
-        setIsLoadingInsights(false);
-      }
-    };
-    fetchInsights();
-  }, [invoices.length]);
-
   const totalSales = invoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
   const totalTax = invoices.reduce((sum, inv) => sum + inv.taxTotal, 0);
   const pendingPayments = invoices.filter(i => i.status !== 'PAID').length;
@@ -46,11 +30,11 @@ const Dashboard: React.FC<Props> = ({ invoices, products, onNewSale }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Business Overview</h2>
-          <p className="text-gray-500">Welcome back! Here's what's happening today.</p>
+          <p className="text-gray-500">Welcome back! Here's your real-time performance data.</p>
         </div>
         <div className="flex items-center space-x-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-sm font-medium border border-green-100">
           <ShieldCheck size={16} />
-          <span>Verified Business Status</span>
+          <span>System Online</span>
         </div>
       </div>
 
@@ -61,16 +45,16 @@ const Dashboard: React.FC<Props> = ({ invoices, products, onNewSale }) => {
         <StatCard title="Pending Bills" value={pendingPayments.toString()} icon={Clock} color="orange" warning={pendingPayments > 0} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-12 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-lg">Sales Trend</h3>
+            <h3 className="font-bold text-lg">Weekly Sales Performance</h3>
             <select className="bg-gray-50 border-none text-sm font-medium rounded-lg focus:ring-0">
               <option>Last 7 Days</option>
               <option>Last 30 Days</option>
             </select>
           </div>
-          <div className="w-full h-72">
+          <div className="w-full h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
@@ -91,55 +75,12 @@ const Dashboard: React.FC<Props> = ({ invoices, products, onNewSale }) => {
             </ResponsiveContainer>
           </div>
         </div>
-
-        <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 rounded-3xl shadow-xl text-white relative overflow-hidden h-full">
-          <div className="relative z-10 h-full flex flex-col">
-            <div className="flex items-center space-x-2 mb-4">
-              <BrainCircuit className="text-indigo-200" size={24} />
-              <h3 className="font-bold text-lg">AI Business Insights</h3>
-            </div>
-            
-            {invoices.length === 0 ? (
-              <div className="space-y-4 flex-1">
-                <p className="text-indigo-100 text-sm">No data yet for AI analysis. Create your first invoice to get smart suggestions.</p>
-                <button 
-                  onClick={onNewSale}
-                  className="w-full bg-white text-indigo-600 py-3 rounded-2xl font-bold hover:bg-indigo-50 transition-colors"
-                >
-                  Create First Invoice
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4 flex-1">
-                {isLoadingInsights ? (
-                  <div className="animate-pulse space-y-3">
-                    <div className="h-4 bg-white/20 rounded w-3/4"></div>
-                    <div className="h-4 bg-white/20 rounded w-full"></div>
-                    <div className="h-4 bg-white/20 rounded w-5/6"></div>
-                  </div>
-                ) : (
-                  <ul className="space-y-3">
-                    {insights.map((insight, idx) => (
-                      <li key={idx} className="flex items-start space-x-3 bg-white/10 p-3 rounded-xl border border-white/10">
-                        <span className="text-indigo-200 mt-1 font-bold">•</span>
-                        <span className="text-sm font-medium leading-relaxed">{insight}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <p className="text-[10px] text-white/50 text-center uppercase tracking-widest mt-auto pt-4">Powered by Gemini Pro</p>
-              </div>
-            )}
-          </div>
-          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 bg-purple-400/20 rounded-full blur-3xl"></div>
-        </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <h3 className="font-bold text-lg">Recent Transactions</h3>
-          <button className="text-indigo-600 text-sm font-bold hover:underline">View All</button>
+          <button className="text-indigo-600 text-sm font-bold hover:underline">View All Invoices</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">

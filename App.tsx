@@ -6,7 +6,6 @@ import InvoiceList from './components/InvoiceList';
 import InvoiceForm from './components/InvoiceForm';
 import ProductList from './components/ProductList';
 import CustomerList from './components/CustomerList';
-import AISmartBill from './components/AISmartBill';
 import ProfileManager from './components/ProfileManager';
 import TemplateDesigner from './components/TemplateDesigner';
 import { 
@@ -15,8 +14,6 @@ import {
   PlusCircle, 
   Package, 
   Users, 
-  Sparkles,
-  Search,
   Menu,
   Settings,
   Building2,
@@ -61,6 +58,7 @@ const App: React.FC = () => {
       id: 'default',
       name: 'Standard Tally',
       baseStyle: 'TALLY',
+      paperFormat: 'A4',
       accentColor: '#4f46e5',
       customFields: [],
       isDefault: true
@@ -147,7 +145,6 @@ const App: React.FC = () => {
             <NavItem view={AppView.DASHBOARD} icon={LayoutDashboard} label="Dashboard" />
             <NavItem view={AppView.INVOICES} icon={FileText} label="Invoices" />
             <NavItem view={AppView.CREATE_INVOICE} icon={PlusCircle} label="Create Invoice" />
-            <NavItem view={AppView.AI_BILLING} icon={Sparkles} label="Magic Bill" />
             <NavItem view={AppView.DESIGN_TEMPLATES} icon={Palette} label="Design Invoice" />
             <NavItem view={AppView.PRODUCTS} icon={Package} label="Inventory" />
             <NavItem view={AppView.CUSTOMERS} icon={Users} label="Customers" />
@@ -188,7 +185,6 @@ const App: React.FC = () => {
               />
             )}
             {currentView === AppView.DESIGN_TEMPLATES && <TemplateDesigner templates={templates} onUpdate={setTemplates} />}
-            {currentView === AppView.AI_BILLING && <AISmartBill products={products} onParsed={() => navigate(AppView.CREATE_INVOICE)} />}
             {currentView === AppView.PRODUCTS && <ProductList products={products} onUpdate={handleUpdateProduct} onAdd={handleAddProduct} />}
             {currentView === AppView.CUSTOMERS && <CustomerList customers={customers} />}
             {currentView === AppView.PROFILES && <ProfileManager profiles={profiles} activeId={activeProfileId} onSwitch={setActiveProfileId} onUpdate={setProfiles} />}

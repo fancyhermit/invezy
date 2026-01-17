@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
-import { InvoiceTemplate, CustomField } from '../types';
-import { Layout, Palette, Plus, Save, Trash2, Wand2, Type as TypeIcon, Edit, Lock, ChevronDown, CheckCircle, ShieldAlert, FileText } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { InvoiceTemplate, CustomField, PaperFormat } from '../types';
+import { Layout, Palette, Plus, Save, Trash2, Wand2, Type as TypeIcon, Edit, Lock, ChevronDown, CheckCircle, ShieldAlert, FileText, Maximize2 } from 'lucide-react';
 
 interface Props {
   templates: InvoiceTemplate[];
@@ -11,12 +11,15 @@ interface Props {
 const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [localTemplate, setLocalTemplate] = useState<InvoiceTemplate | null>(null);
+  const [scale, setScale] = useState(1);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
 
   const startNew = () => {
     const fresh: InvoiceTemplate = {
       id: Math.random().toString(36).substr(2, 9),
       name: 'New Custom Template',
       baseStyle: 'TALLY',
+      paperFormat: 'A4',
       accentColor: '#4f46e5',
       customFields: [],
       isDefault: false
@@ -28,7 +31,7 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
   const handleEdit = (t: InvoiceTemplate) => {
     if (t.id === 'default') return;
     setEditingId(t.id);
-    setLocalTemplate({ ...t });
+    setLocalTemplate({ ...t, paperFormat: t.paperFormat || 'A4' });
   };
 
   const handleSave = () => {
@@ -43,6 +46,23 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
     onUpdate(updated);
     setEditingId(null);
   };
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (previewContainerRef.current) {
+        const containerWidth = previewContainerRef.current.offsetWidth - 64;
+        const sheetWidth = 800; // Target width of the invoice sheet
+        if (containerWidth < sheetWidth) {
+          setScale(containerWidth / sheetWidth);
+        } else {
+          setScale(1);
+        }
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [editingId]);
 
   const addField = (pos: CustomField['position']) => {
     if (!localTemplate) return;
@@ -65,55 +85,69 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
     const isMinimal = localTemplate.baseStyle === 'MINIMAL';
     const isTally = localTemplate.baseStyle === 'TALLY';
 
+    // Dimensions based on formats
+    const formatStyles: Record<PaperFormat, string> = {
+      'A4': 'min-h-[1123px] w-[800px]',
+      'A5': 'min-h-[794px] w-[560px]',
+      'LEGAL': 'min-h-[1344px] w-[800px]'
+    };
+
     return (
-      <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 pb-20">
+        <div className="flex items-center justify-between sticky top-0 bg-gray-50/80 backdrop-blur-md z-30 py-4 -mx-4 px-4 border-b border-gray-100">
           <div className="flex items-center space-x-3">
-            <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 font-bold">Back</button>
-            <h2 className="text-2xl font-bold">Customize Template</h2>
+            <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 font-bold px-3 py-1 bg-white rounded-lg shadow-sm border border-gray-100">Back</button>
+            <h2 className="text-2xl font-black text-gray-900">Design Canvas</h2>
           </div>
-          <button onClick={handleSave} className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg">
-            <Save size={18} />
-            <span>Save Template</span>
+          <button onClick={handleSave} className="flex items-center space-x-2 bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black shadow-xl shadow-indigo-100 transition-all hover:scale-105 active:scale-95">
+            <Save size={20} />
+            <span>Save Design</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Controls */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+          <div className="lg:col-span-4 space-y-6 sticky lg:top-24">
+            <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm space-y-6">
               <div>
-                <label className="text-xs font-bold text-gray-400 uppercase">Template Name</label>
-                <input 
-                  type="text" 
-                  value={localTemplate.name} 
-                  onChange={e => setLocalTemplate({...localTemplate, name: e.target.value})}
-                  className="w-full mt-1 bg-gray-50 border-none rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Format & Layout</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['A4', 'A5', 'LEGAL'] as PaperFormat[]).map(f => (
+                    <button 
+                      key={f} 
+                      onClick={() => setLocalTemplate({...localTemplate, paperFormat: f})}
+                      className={`py-3 rounded-xl text-[10px] font-black transition-all border-2 ${localTemplate.paperFormat === f ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-gray-50 text-gray-400 hover:border-gray-200 bg-gray-50/50'}`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
               </div>
+
               <div>
-                <label className="text-xs font-bold text-gray-400 uppercase">Base Layout Style</label>
-                <div className="grid grid-cols-3 gap-2 mt-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Visual Style</label>
+                <div className="grid grid-cols-3 gap-2">
                   {['TALLY', 'MODERN', 'MINIMAL'].map((s: any) => (
                     <button 
                       key={s} 
                       onClick={() => setLocalTemplate({...localTemplate, baseStyle: s})}
-                      className={`py-3 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center justify-center space-y-1 ${localTemplate.baseStyle === s ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-sm' : 'border-gray-100 text-gray-400 hover:border-indigo-200'}`}
+                      className={`py-4 rounded-xl text-[9px] font-black transition-all border-2 flex flex-col items-center justify-center space-y-2 ${localTemplate.baseStyle === s ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-sm' : 'border-gray-50 text-gray-400 hover:bg-white'}`}
                     >
-                      <Layout size={14} />
+                      <Layout size={18} />
                       <span>{s}</span>
                     </button>
                   ))}
                 </div>
               </div>
+
               <div>
-                <label className="text-xs font-bold text-gray-400 uppercase">Brand Theme Color</label>
-                <div className="flex space-x-2 mt-2">
-                  {['#4f46e5', '#db2777', '#059669', '#000000', '#f59e0b'].map(c => (
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Brand Accent</label>
+                <div className="flex flex-wrap gap-3">
+                  {['#4f46e5', '#db2777', '#059669', '#000000', '#f59e0b', '#3b82f6'].map(c => (
                     <button 
                       key={c}
                       onClick={() => setLocalTemplate({...localTemplate, accentColor: c})}
-                      className={`w-10 h-10 rounded-full border-4 transition-all ${localTemplate.accentColor === c ? 'border-indigo-200 scale-110 shadow-md' : 'border-transparent'}`}
+                      className={`w-10 h-10 rounded-full border-4 transition-all ${localTemplate.accentColor === c ? 'border-gray-200 scale-110 shadow-lg' : 'border-transparent shadow-sm'}`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -121,49 +155,55 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-              <h4 className="font-bold text-gray-900 flex items-center space-x-2">
+            <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm space-y-4">
+              <h4 className="font-black text-gray-900 text-sm uppercase tracking-widest flex items-center space-x-2">
                 <Plus size={18} className="text-indigo-600" />
-                <span>Insert New Fields</span>
+                <span>Components</span>
               </h4>
-              <p className="text-xs text-gray-400">Add business specific data points like Transport or Bank details.</p>
-              
               <div className="space-y-2">
                 {[
-                  { id: 'HEADER', label: 'Header Detail' },
-                  { id: 'ABOVE_ITEMS', label: 'Above Items' },
-                  { id: 'BELOW_ITEMS', label: 'Below Items' },
-                  { id: 'FOOTER', label: 'Footer Detail' }
+                  { id: 'HEADER', label: 'Header Block' },
+                  { id: 'ABOVE_ITEMS', label: 'Above Product Grid' },
+                  { id: 'BELOW_ITEMS', label: 'Below Product Grid' },
+                  { id: 'FOOTER', label: 'Bottom Footer' }
                 ].map((pos) => (
                   <button 
                     key={pos.id}
                     onClick={() => addField(pos.id as any)}
-                    className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-indigo-50 rounded-xl text-left transition-all group"
+                    className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-indigo-50 rounded-2xl text-left transition-all group"
                   >
-                    <span className="text-sm font-bold text-gray-700 group-hover:text-indigo-600">{pos.label}</span>
-                    <Plus size={16} className="text-indigo-400 group-hover:scale-125 transition-transform" />
+                    <span className="text-xs font-bold text-gray-600 group-hover:text-indigo-600">{pos.label}</span>
+                    <Plus size={16} className="text-indigo-300 group-hover:scale-125 transition-transform" />
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Designer Preview - DYNAMIC LAYOUT ENGINE */}
-          <div className="lg:col-span-8 space-y-4">
-            <div className="bg-gray-200/50 p-8 rounded-[40px] min-h-[600px] border-4 border-dashed border-gray-300 flex flex-col items-center">
-               
-               {/* THE INVOICE SHEET */}
-               <div className={`bg-white w-full max-w-[600px] shadow-2xl rounded-sm p-8 text-[10px] leading-tight space-y-6 transition-all duration-500 ${isTally ? 'font-mono' : 'font-sans'}`}>
-                 
-                 {/* 1. Header Area */}
-                 <div className={`flex justify-between items-start ${isMinimal ? 'border-b pb-6' : isTally ? 'border-b-2 border-gray-900 pb-4' : 'bg-gray-50 -m-8 p-8 mb-6 rounded-t-sm border-b border-gray-100'}`}>
+          {/* Designer Preview - SMART SCALING ENGINE */}
+          <div className="lg:col-span-8 flex flex-col items-center" ref={previewContainerRef}>
+            <div className="mb-4 text-xs font-bold text-gray-400 uppercase tracking-[4px] flex items-center space-x-2 bg-white px-6 py-2 rounded-full border border-gray-100 shadow-sm">
+              <Maximize2 size={12} />
+              <span>Real-time Sheet Rendering</span>
+            </div>
+            
+            <div className="overflow-visible" style={{ width: localTemplate.paperFormat === 'A5' ? 560 : 800 }}>
+              <div 
+                className={`bg-white shadow-2xl transition-all duration-500 origin-top ${formatStyles[localTemplate.paperFormat]} ${isTally ? 'font-mono' : 'font-sans'} text-gray-900 relative`}
+                style={{ 
+                  transform: `scale(${scale})`,
+                  padding: localTemplate.paperFormat === 'A5' ? '1rem' : '2.5rem',
+                  fontSize: localTemplate.paperFormat === 'A5' ? '12px' : '10px'
+                }}
+              >
+                {/* 1. Header Area */}
+                <div className={`flex justify-between items-start mb-8 ${isMinimal ? 'border-b pb-6' : isTally ? 'border-b-2 border-gray-900 pb-4' : 'bg-gray-50 -m-10 p-10 mb-8 rounded-t-sm border-b border-gray-100'}`}>
                     <div className="space-y-1 flex-1">
-                       <h1 className={`text-2xl font-black uppercase mb-2`} style={{ color: localTemplate.accentColor }}>{isModern ? 'BRAND' : 'BUSINESS'} NAME</h1>
-                       <p className="opacity-60">123 Industrial Area, Phase II</p>
-                       <p className="opacity-60">GSTIN: 27AAAAA0000A1Z5</p>
+                       <h1 className="text-3xl font-black uppercase mb-2" style={{ color: localTemplate.accentColor }}>BRAND NAME</h1>
+                       <p className="opacity-60 text-xs">123 Street, Business Hub, City</p>
+                       <p className="opacity-60 text-xs font-bold">GSTIN: 27AAAAA0000A1Z5</p>
                        
-                       {/* Header Custom Fields */}
-                       <div className="space-y-1 mt-4">
+                       <div className="space-y-2 mt-6">
                          {localTemplate.customFields.filter(f => f.position === 'HEADER').map(f => (
                            <FieldEditor 
                              key={f.id} 
@@ -175,28 +215,27 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
                        </div>
                     </div>
                     <div className="text-right">
-                       <div className={`${isTally ? 'bg-gray-900 text-white' : 'bg-indigo-600 text-white'} px-4 py-1 inline-block mb-3 font-bold`}>TAX INVOICE</div>
-                       <p className="font-bold">INV-2024-001</p>
-                       <p className="text-gray-400">Dated: {new Date().toLocaleDateString()}</p>
+                       <div className={`${isTally ? 'bg-gray-900 text-white' : 'bg-indigo-600 text-white'} px-6 py-2 inline-block mb-4 font-black text-sm uppercase tracking-widest`}>TAX INVOICE</div>
+                       <p className="font-black text-lg">INV-2024-001</p>
+                       <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Date: {new Date().toLocaleDateString()}</p>
                     </div>
-                 </div>
+                </div>
 
-                 {/* 2. Billing Info */}
-                 <div className={`grid grid-cols-2 gap-8 ${isModern ? 'pt-4' : ''}`}>
-                    <div className={`${isTally ? 'border border-gray-300 p-3 bg-gray-50' : isMinimal ? 'pb-4 border-b' : ''}`}>
-                       <p className="font-black text-[8px] uppercase tracking-widest text-gray-400 mb-2">Billed To:</p>
-                       <p className="text-sm font-black">Acme Corporation Ltd</p>
-                       <p className="text-gray-500 mt-1">Tech Park, Mumbai, MH</p>
+                {/* 2. Billing Info */}
+                <div className="grid grid-cols-2 gap-8 mb-8">
+                    <div className={`${isTally ? 'border border-gray-200 p-4 bg-gray-50/50' : isMinimal ? 'pb-4 border-b' : ''}`}>
+                       <p className="font-black text-[9px] uppercase tracking-widest text-indigo-400 mb-3">Customer Info</p>
+                       <p className="text-base font-black">Client Business Ltd</p>
+                       <p className="text-gray-500 mt-1 leading-relaxed">Office 402, Skyline Towers, Mumbai</p>
                     </div>
-                    <div className={`${isTally ? 'border border-gray-300 p-3 bg-gray-50' : isMinimal ? 'pb-4 border-b' : ''}`}>
-                       <p className="font-black text-[8px] uppercase tracking-widest text-gray-400 mb-2">Shipping Details:</p>
-                       <p className="text-gray-400 italic">Same as billing address</p>
+                    <div className={`${isTally ? 'border border-gray-200 p-4 bg-gray-50/50' : isMinimal ? 'pb-4 border-b' : ''}`}>
+                       <p className="font-black text-[9px] uppercase tracking-widest text-indigo-400 mb-3">Shipment To</p>
+                       <p className="text-gray-400 italic">Self pickup from warehouse</p>
                     </div>
-                 </div>
+                </div>
 
-                 {/* 3. ABOVE_ITEMS Custom Fields */}
-                 <div className="space-y-2 py-2">
-                    <p className="text-[7px] font-black text-indigo-400 uppercase tracking-widest mb-1">Above Items Content</p>
+                {/* 3. ABOVE_ITEMS Custom Fields */}
+                <div className="space-y-2 mb-6 border-l-4 border-indigo-100 pl-4 py-1">
                     {localTemplate.customFields.filter(f => f.position === 'ABOVE_ITEMS').map(f => (
                       <FieldEditor 
                         key={f.id} 
@@ -205,24 +244,24 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
                         onRemove={() => setLocalTemplate({...localTemplate, customFields: localTemplate.customFields.filter(cf => cf.id !== f.id)})}
                       />
                     ))}
-                 </div>
+                </div>
 
-                 {/* 4. The Grid */}
-                 <div className={`w-full overflow-hidden ${isTally ? 'border-2 border-gray-900' : isMinimal ? 'border-y-2 border-gray-100 py-4' : 'rounded-xl border border-gray-100'}`}>
-                    <div className={`flex font-bold p-2 ${isTally ? 'bg-gray-100 border-b-2 border-gray-900' : isModern ? 'bg-indigo-50 text-indigo-700' : 'text-gray-400'}`}>
+                {/* 4. The Grid */}
+                <div className={`w-full overflow-hidden mb-6 ${isTally ? 'border-2 border-gray-900' : isMinimal ? 'border-y-2 border-gray-100 py-6' : 'rounded-2xl border border-gray-100'}`}>
+                    <div className={`flex font-black p-4 text-[9px] uppercase tracking-widest ${isTally ? 'bg-gray-100 border-b-2 border-gray-900' : isModern ? 'bg-indigo-50 text-indigo-700' : 'text-gray-400'}`}>
                        <span className="w-12">SL</span>
-                       <span className="flex-1">DESCRIPTION</span>
-                       <span className="w-16 text-center">QTY</span>
-                       <span className="w-20 text-right">PRICE</span>
+                       <span className="flex-1">ITEM DESCRIPTION</span>
+                       <span className="w-20 text-center">QTY</span>
+                       <span className="w-24 text-right">UNIT PRICE</span>
                     </div>
-                    <div className={`p-2 h-20 flex flex-col justify-center text-center italic text-gray-300 ${isTally ? 'bg-white' : ''}`}>
-                       Item rows will appear here during billing...
+                    <div className={`p-12 text-center italic text-gray-300 font-bold uppercase tracking-tighter text-[10px] ${isTally ? 'bg-white' : ''}`}>
+                       Product list will expand dynamically here
                     </div>
-                 </div>
+                </div>
 
-                 {/* 5. BELOW_ITEMS Custom Fields */}
-                 <div className="space-y-2 py-2 border-l-2 border-indigo-100 pl-4">
-                    <p className="text-[7px] font-black text-indigo-400 uppercase tracking-widest mb-1">Below Items Content</p>
+                {/* 5. BELOW_ITEMS Custom Fields */}
+                <div className="space-y-2 mb-8 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Internal Tracking / Transport</p>
                     {localTemplate.customFields.filter(f => f.position === 'BELOW_ITEMS').map(f => (
                       <FieldEditor 
                         key={f.id} 
@@ -231,12 +270,12 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
                         onRemove={() => setLocalTemplate({...localTemplate, customFields: localTemplate.customFields.filter(cf => cf.id !== f.id)})}
                       />
                     ))}
-                 </div>
+                </div>
 
-                 {/* 6. Totals & Footer */}
-                 <div className="flex justify-between items-start pt-6 border-t border-gray-100">
-                    <div className="space-y-4 flex-1">
-                       <div className="space-y-1">
+                {/* 6. Totals & Footer */}
+                <div className="flex justify-between items-start pt-10 border-t-2 border-gray-100">
+                    <div className="space-y-6 flex-1 pr-10">
+                       <div className="space-y-2">
                           {localTemplate.customFields.filter(f => f.position === 'FOOTER').map(f => (
                              <FieldEditor 
                               key={f.id} 
@@ -246,26 +285,19 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
                             />
                           ))}
                        </div>
-                       <p className="text-[8px] text-gray-400 max-w-[200px]">Declaration: Certified that all particulars are true and items mentioned above are non-returnable.</p>
+                       <p className="text-[10px] text-gray-400 max-w-[300px] leading-relaxed">Declaration: certified that all particulars are true and items are sold in accordance with tax laws.</p>
+                       <div className="pt-10">
+                          <p className="font-black text-[9px] uppercase mb-12">Authorized Signatory</p>
+                          <div className="w-48 h-px bg-gray-900" />
+                       </div>
                     </div>
-                    <div className={`w-40 space-y-2 p-3 ${isTally ? 'bg-gray-900 text-white' : isModern ? 'bg-indigo-600 text-white rounded-xl' : 'border-t-2 border-gray-900'}`}>
-                       <div className="flex justify-between text-[8px] opacity-70"><span>Subtotal</span><span>₹0.00</span></div>
-                       <div className="flex justify-between text-[8px] opacity-70"><span>Tax (18%)</span><span>₹0.00</span></div>
-                       <div className="flex justify-between font-black text-xs border-t border-white/20 pt-1"><span>TOTAL</span><span>₹0.00</span></div>
+                    <div className={`w-64 space-y-3 p-6 ${isTally ? 'bg-gray-900 text-white' : isModern ? 'bg-indigo-600 text-white rounded-3xl' : 'border-t-4 border-gray-900'}`}>
+                       <div className="flex justify-between text-xs font-bold opacity-70"><span>SUBTOTAL</span><span>₹0.00</span></div>
+                       <div className="flex justify-between text-xs font-bold opacity-70"><span>GST (18%)</span><span>₹0.00</span></div>
+                       <div className="flex justify-between font-black text-lg border-t border-white/20 pt-3"><span>TOTAL</span><span>₹0.00</span></div>
                     </div>
-                 </div>
-               </div>
-
-               <div className="mt-8 flex items-center space-x-6">
-                 <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-full shadow-sm text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                    <Palette size={14} className="text-indigo-500" />
-                    <span>Live Theme Preview</span>
-                 </div>
-                 <div className="flex items-center space-x-2 bg-indigo-600 px-4 py-2 rounded-full shadow-sm text-[10px] font-bold text-white uppercase tracking-widest">
-                    <CheckCircle size={14} />
-                    <span>Real-time Rendering</span>
-                 </div>
-               </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -274,59 +306,62 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-10">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Invoice Designer</h2>
-          <p className="text-gray-500">Create professional custom templates to match your brand identity.</p>
+          <h2 className="text-3xl font-black text-gray-900">Brand Identity</h2>
+          <p className="text-gray-500 font-medium">Design how your business looks to your customers.</p>
         </div>
         <button 
           onClick={startNew}
-          className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:bg-indigo-700 transition-all hover:scale-105 active:scale-95"
+          className="flex items-center space-x-3 bg-indigo-600 text-white px-8 py-4 rounded-[24px] font-black shadow-xl shadow-indigo-100 hover:scale-105 active:scale-95 transition-all"
         >
-          <Palette size={20} />
-          <span>New Design</span>
+          <Palette size={24} />
+          <span>New Identity</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {templates.map(t => {
           const isSystem = t.id === 'default';
           return (
-            <div key={t.id} className={`bg-white p-6 rounded-3xl border-2 transition-all group ${t.isDefault ? 'border-indigo-600 shadow-xl ring-4 ring-indigo-50' : 'border-gray-100 shadow-sm hover:border-indigo-200'}`}>
-              <div className="flex justify-between items-start mb-4">
-                 <div className={`p-3 rounded-xl ${isSystem ? 'bg-gray-100 text-gray-400' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all'}`}>
-                   <FileText size={24} />
+            <div key={t.id} className={`bg-white p-8 rounded-[40px] border-4 transition-all group relative ${t.isDefault ? 'border-indigo-600 shadow-2xl scale-[1.02]' : 'border-transparent shadow-sm hover:border-indigo-100 hover:shadow-xl'}`}>
+              <div className="flex justify-between items-start mb-6">
+                 <div className={`p-4 rounded-3xl ${isSystem ? 'bg-gray-100 text-gray-400' : 'bg-indigo-600 text-white shadow-lg'}`}>
+                   <FileText size={32} />
                  </div>
-                 <div className="flex items-center space-x-2">
+                 <div className="flex flex-col items-end space-y-2">
                    {isSystem && (
-                     <span className="flex items-center space-x-1 px-2 py-1 bg-gray-100 text-gray-500 rounded-lg text-[9px] font-black uppercase tracking-tighter">
+                     <span className="flex items-center space-x-1 px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-[9px] font-black uppercase">
                        <Lock size={10} />
                        <span>LOCKED</span>
                      </span>
                    )}
                    {t.isDefault && (
-                     <span className="px-2 py-1 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">Active</span>
+                     <span className="px-3 py-1 bg-indigo-600 text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100">Primary</span>
                    )}
                  </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900">{t.name}</h3>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">
-                {isSystem ? 'System Baseline' : `${t.baseStyle} Format`}
-              </p>
               
-              <div className="mt-8 flex items-center justify-between">
+              <h3 className="text-2xl font-black text-gray-900">{t.name}</h3>
+              <div className="flex items-center space-x-2 mt-2">
+                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{isSystem ? 'Baseline' : `${t.baseStyle}`}</span>
+                 <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
+                 <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{t.paperFormat || 'A4'} SIZE</span>
+              </div>
+              
+              <div className="mt-10 flex items-center justify-between">
                 {isSystem ? (
-                  <div className="flex items-center space-x-2 text-gray-400">
+                  <div className="flex items-center space-x-2 text-gray-400 py-3">
                     <ShieldAlert size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Protected Asset</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Protected System Template</span>
                   </div>
                 ) : (
                   <button 
                     onClick={() => handleEdit(t)} 
-                    className="flex items-center space-x-2 text-indigo-600 font-bold text-sm hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
+                    className="flex items-center space-x-2 text-indigo-600 font-black text-sm hover:bg-indigo-50 px-5 py-3 rounded-2xl transition-all active:scale-95"
                   >
-                    <Edit size={14} />
+                    <Edit size={16} />
                     <span>Customize</span>
                   </button>
                 )}
@@ -334,69 +369,55 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
                 {!t.isDefault && (
                   <button 
                     onClick={() => setAsDefault(t.id)}
-                    className="bg-gray-50 text-gray-500 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                    className="bg-gray-50 text-gray-500 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                   >
-                    Use as Primary
+                    Activate
                   </button>
                 )}
               </div>
             </div>
           );
         })}
-        
-        {/* Magic Generator */}
-        <div 
-          onClick={startNew}
-          className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-3xl border-2 border-dashed border-indigo-200 flex flex-col items-center justify-center text-center cursor-pointer hover:border-indigo-400 hover:bg-white transition-all group"
-        >
-          <div className="p-4 bg-white rounded-2xl text-indigo-500 mb-3 group-hover:scale-110 shadow-sm transition-transform">
-            <Wand2 size={32} />
-          </div>
-          <h4 className="font-bold text-indigo-900">Custom Brand</h4>
-          <p className="text-xs text-indigo-400 mt-1">Design a unique layout for your business.</p>
-        </div>
       </div>
     </div>
   );
 };
 
-// Sub-component for individual field controls
 const FieldEditor: React.FC<{ 
   field: CustomField; 
   onUpdate: (f: CustomField) => void; 
   onRemove: () => void; 
 }> = ({ field, onUpdate, onRemove }) => {
   return (
-    <div className="group relative bg-indigo-50/40 p-2.5 rounded-xl border border-indigo-100/50 flex items-center justify-between space-x-2 animate-in fade-in slide-in-from-left-2 duration-200 hover:bg-white hover:shadow-sm transition-all">
-      <div className="flex items-center space-x-2 flex-1 min-w-0">
+    <div className="group relative bg-gray-50 p-3 rounded-2xl border border-gray-100 flex items-center justify-between space-x-3 animate-in fade-in slide-in-from-left-2 duration-300 hover:bg-white hover:shadow-md transition-all">
+      <div className="flex items-center space-x-3 flex-1 min-w-0">
         <input 
           type="text" 
           value={field.label} 
           onChange={e => onUpdate({...field, label: e.target.value})}
-          className="bg-transparent border-none p-0 focus:ring-0 font-bold text-gray-800 w-28 shrink-0 text-[10px] uppercase tracking-tighter"
-          title="Change Field Name"
+          className="bg-transparent border-none p-0 focus:ring-0 font-black text-gray-900 w-32 shrink-0 text-[10px] uppercase tracking-tighter"
         />
-        <div className="h-4 w-px bg-indigo-100" />
+        <div className="h-4 w-px bg-gray-200" />
         <input 
           type="text" 
           value={field.defaultValue} 
           onChange={e => onUpdate({...field, defaultValue: e.target.value})}
-          placeholder={field.isEditable ? "Input at billing..." : "Fixed Standard Text..."}
-          className="bg-transparent border-none p-0 focus:ring-0 text-indigo-400 flex-1 italic text-[9px] truncate"
+          placeholder={field.isEditable ? "Filled at sale time..." : "Fixed standard text..."}
+          className="bg-transparent border-none p-0 focus:ring-0 text-indigo-500 flex-1 italic text-[10px] truncate"
           disabled={field.isEditable}
         />
       </div>
       
-      <div className="flex items-center space-x-1 shrink-0">
+      <div className="flex items-center space-x-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button 
           onClick={() => onUpdate({...field, isEditable: !field.isEditable})}
-          className={`p-1.5 rounded-lg transition-all ${field.isEditable ? 'text-indigo-600 bg-white shadow-xs' : 'text-gray-300 hover:text-indigo-400'}`}
-          title={field.isEditable ? "Set to: Ask for value when creating bill" : "Set to: Fixed standard text"}
+          className={`p-2 rounded-xl transition-all ${field.isEditable ? 'text-indigo-600 bg-white shadow-sm border border-indigo-50' : 'text-gray-300 hover:text-indigo-400'}`}
+          title={field.isEditable ? "Change to Fixed Text" : "Change to Manual Input"}
         >
-          {field.isEditable ? <Edit size={12} /> : <Lock size={12} />}
+          {field.isEditable ? <Edit size={14} /> : <Lock size={14} />}
         </button>
-        <button onClick={onRemove} className="p-1.5 text-red-200 hover:text-red-500 transition-colors">
-          <Trash2 size={12} />
+        <button onClick={onRemove} className="p-2 text-red-300 hover:text-red-500 transition-colors">
+          <Trash2 size={14} />
         </button>
       </div>
     </div>

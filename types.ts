@@ -5,16 +5,17 @@ export enum AppView {
   CREATE_INVOICE = 'CREATE_INVOICE',
   PRODUCTS = 'PRODUCTS',
   CUSTOMERS = 'CUSTOMERS',
-  AI_BILLING = 'AI_BILLING',
   PROFILES = 'PROFILES',
   DESIGN_TEMPLATES = 'DESIGN_TEMPLATES'
 }
+
+export type PaperFormat = 'A4' | 'A5' | 'LEGAL';
 
 export interface CustomField {
   id: string;
   label: string;
   defaultValue: string;
-  isEditable: boolean; // If true, it shows up in the 'Details' section during billing
+  isEditable: boolean;
   position: 'HEADER' | 'FOOTER' | 'ABOVE_ITEMS' | 'BELOW_ITEMS';
 }
 
@@ -22,6 +23,7 @@ export interface InvoiceTemplate {
   id: string;
   name: string;
   baseStyle: 'TALLY' | 'MODERN' | 'MINIMAL';
+  paperFormat: PaperFormat;
   accentColor: string;
   customFields: CustomField[];
   isDefault: boolean;
@@ -40,7 +42,7 @@ export interface BusinessProfile {
 export interface ProductDynamicField {
   label: string;
   defaultValue: string;
-  isDynamic: boolean; // If true, must be filled during billing
+  isDynamic: boolean;
 }
 
 export interface Product {
@@ -68,7 +70,7 @@ export interface LineItem {
   quantity: number;
   price: number;
   taxRate: number;
-  dynamicValues?: Record<string, string>; // Values for item-specific dynamic fields
+  dynamicValues?: Record<string, string>;
 }
 
 export interface Invoice {
@@ -83,5 +85,5 @@ export interface Invoice {
   status: 'PAID' | 'UNPAID' | 'OVERDUE';
   profileId: string;
   templateId?: string;
-  customFieldData?: Record<string, string>; // Stores values for editable custom fields
+  customFieldData?: Record<string, string>;
 }
