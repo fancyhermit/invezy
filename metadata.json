@@ -1,0 +1,7 @@
+{
+  "name": "SwipeLite - Smart Billing AI",
+  "description": "A feature-rich billing and inventory management app with AI-powered invoice generation, professional GST invoicing, and real-time business insights.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
