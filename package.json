@@ -10,10 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "lucide-react": "^0.462.0",
+    "lucide-react": "^0.562.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "recharts": "^2.13.3"
+    "recharts": "^2.13.3",
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

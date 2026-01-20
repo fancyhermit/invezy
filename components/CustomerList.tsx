@@ -1,18 +1,20 @@
 
-import React, { useState } from 'react';
-import { Customer } from '../types';
-import { UserPlus, Mail, Phone, MapPin, Search, X, Save, Trash2, History } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Customer, Invoice } from '../types';
+import { UserPlus, Mail, Phone, MapPin, Search, X, Save, Trash2, History, IndianRupee, FileText, ChevronRight } from 'lucide-react';
 
 interface Props {
   customers: Customer[];
+  invoices: Invoice[];
   onUpdate: (updated: Customer[]) => void;
 }
 
-const CustomerList: React.FC<Props> = ({ customers, onUpdate }) => {
+const CustomerList: React.FC<Props> = ({ customers, invoices, onUpdate }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState<Partial<Customer>>({});
+  const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
 
   const filteredCustomers = customers.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -56,6 +58,23 @@ const CustomerList: React.FC<Props> = ({ customers, onUpdate }) => {
       onUpdate([...remaining]);
     }
   };
+
+  // Logic for history view
+  const customerInvoices = useMemo(() => {
+    if (!historyCustomer) return [];
+    return invoices
+      .filter(inv => inv.customerId === historyCustomer.id)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [historyCustomer, invoices]);
+
+  const historyStats = useMemo(() => {
+    if (customerInvoices.length === 0) return { total: 0, count: 0, pending: 0 };
+    return {
+      total: customerInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0),
+      count: customerInvoices.length,
+      pending: customerInvoices.filter(inv => inv.status !== 'PAID').length
+    };
+  }, [customerInvoices]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 overflow-visible">
@@ -133,7 +152,11 @@ const CustomerList: React.FC<Props> = ({ customers, onUpdate }) => {
               </div>
 
               <div className="mt-8 pt-6 border-t border-gray-100 flex justify-between items-center">
-                <button type="button" className="flex items-center space-x-2 text-sm font-black text-indigo-600 hover:scale-105 transition-all">
+                <button 
+                  type="button" 
+                  onClick={() => setHistoryCustomer(c)}
+                  className="flex items-center space-x-2 text-sm font-black text-indigo-600 hover:scale-105 transition-all"
+                >
                   <History size={16} />
                   <span>VIEW HISTORY</span>
                 </button>
@@ -149,6 +172,101 @@ const CustomerList: React.FC<Props> = ({ customers, onUpdate }) => {
           ))
         )}
       </div>
+
+      {/* History Modal */}
+      {historyCustomer && (
+        <div className="fixed inset-0 z-[500] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-gray-50 rounded-[40px] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden border border-white/20">
+            <div className="p-8 bg-white border-b border-gray-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-xl">
+                  {historyCustomer.name.charAt(0)}
+                </div>
+                <div className="text-left">
+                  <h3 className="text-xl font-black text-gray-900 leading-none">{historyCustomer.name}</h3>
+                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Transaction History</p>
+                </div>
+              </div>
+              <button onClick={() => setHistoryCustomer(null)} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-all">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto no-scrollbar p-8">
+              {customerInvoices.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center space-y-4">
+                  <div className="p-6 bg-white rounded-full text-gray-200">
+                    <FileText size={48} />
+                  </div>
+                  <p className="font-bold text-gray-400">No transactions found for this customer.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white p-5 rounded-[24px] border border-gray-100">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Spent</p>
+                      <div className="flex items-center text-2xl font-black text-gray-900">
+                        <IndianRupee size={18} className="mr-0.5 text-indigo-600" />
+                        {historyStats.total.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="bg-white p-5 rounded-[24px] border border-gray-100">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Invoices</p>
+                      <div className="flex items-center justify-between">
+                         <span className="text-2xl font-black text-gray-900">{historyStats.count}</span>
+                         {historyStats.pending > 0 && (
+                           <span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                             {historyStats.pending} PENDING
+                           </span>
+                         )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* List */}
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Recent Transactions</p>
+                    <div className="divide-y divide-gray-100 bg-white rounded-[32px] border border-gray-100 overflow-hidden">
+                      {customerInvoices.map(inv => (
+                        <div key={inv.id} className="p-5 flex items-center justify-between hover:bg-indigo-50/30 transition-colors group cursor-pointer">
+                          <div className="flex items-center space-x-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${inv.status === 'PAID' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+                              <FileText size={18} />
+                            </div>
+                            <div className="text-left">
+                              <p className="font-black text-sm text-gray-900">{inv.invoiceNumber}</p>
+                              <p className="text-[10px] font-bold text-gray-400">{new Date(inv.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                              <p className="font-black text-sm text-gray-900">₹{inv.grandTotal.toLocaleString()}</p>
+                              <span className={`text-[8px] font-black uppercase tracking-widest ${inv.status === 'PAID' ? 'text-green-500' : 'text-orange-500'}`}>
+                                {inv.status}
+                              </span>
+                            </div>
+                            <ChevronRight size={16} className="text-gray-200 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-8 bg-white border-t border-gray-100 flex justify-center shrink-0">
+               <button 
+                onClick={() => setHistoryCustomer(null)}
+                className="w-full bg-gray-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all active:scale-95 shadow-xl shadow-gray-200"
+               >
+                 Close History
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isFormOpen && (
         <div className="fixed inset-0 z-[400] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">

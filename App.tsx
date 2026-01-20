@@ -217,7 +217,13 @@ const App: React.FC = () => {
             )}
             {currentView === AppView.DESIGN_TEMPLATES && <TemplateDesigner templates={templates} onUpdate={setTemplates} />}
             {currentView === AppView.PRODUCTS && <ProductList products={products} onUpdate={handleUpdateProduct} onAdd={handleAddProduct} />}
-            {currentView === AppView.CUSTOMERS && <CustomerList customers={customers} onUpdate={handleUpdateCustomers} />}
+            {currentView === AppView.CUSTOMERS && (
+              <CustomerList 
+                customers={customers} 
+                invoices={invoices}
+                onUpdate={handleUpdateCustomers} 
+              />
+            )}
             {currentView === AppView.PROFILES && <ProfileManager profiles={profiles} activeId={activeProfileId} onSwitch={setActiveProfileId} onUpdate={setProfiles} />}
           </div>
         </div>

@@ -14,8 +14,15 @@ export default defineConfig({
     sourcemap: false,
     minify: 'esbuild',
     rollupOptions: {
+      external: ['html2canvas', 'jspdf'],
       input: {
         main: './index.html'
+      },
+      output: {
+        globals: {
+          html2canvas: 'html2canvas',
+          jspdf: 'jspdf'
+        }
       }
     }
   }

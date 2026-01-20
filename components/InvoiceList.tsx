@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Invoice, Customer } from '../types';
-// Fixed: Added ChevronDown to imports from lucide-react
-import { Download, Search, Filter, MoreVertical, Plus, Edit2, Trash2, Printer, Check, X, CreditCard, Clock, AlertCircle, ChevronDown } from 'lucide-react';
+import { Download, Search, Filter, MoreVertical, Plus, Edit2, Trash2, Printer, Check, X, CreditCard, Clock, AlertCircle, ChevronDown, Calendar, User, IndianRupee } from 'lucide-react';
 
 interface Props {
   invoices: Invoice[];
@@ -24,16 +23,13 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
-      // 1. Search Query
       const customer = customers.find(c => c.id === inv.customerId);
       const customerName = customer?.name || 'Walk-in Customer';
       const matchesSearch = inv.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            customerName.toLowerCase().includes(searchQuery.toLowerCase());
       
-      // 2. Status Filter
       const matchesStatus = statusFilter === 'ALL' || inv.status === statusFilter;
 
-      // 3. Date Filter
       let matchesDate = true;
       if (dateRangeFilter !== 'ALL') {
         const invDate = new Date(inv.date);
@@ -58,22 +54,54 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
   const handleMenuClick = (e: React.MouseEvent, inv: Invoice) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    setMenuConfig({
-      id: inv.id,
-      x: rect.right - 200,
-      y: rect.bottom + 8
-    });
+    const menuWidth = 192; // w-48
+    const menuHeight = 240; // Precise estimation
+    
+    // Horizontal positioning - try to center on button
+    let x = rect.left + (rect.width / 2) - (menuWidth / 2);
+    
+    // Boundary check right
+    if (x + menuWidth > window.innerWidth - 12) {
+      x = rect.right - menuWidth;
+    }
+    // Boundary check left
+    if (x < 12) x = 12;
+    // Final check for very narrow screens
+    if (x + menuWidth > window.innerWidth - 12) x = window.innerWidth - menuWidth - 12;
+
+    // Vertical positioning - snug gap
+    let y = rect.bottom + 4;
+    
+    // Flip menu if it goes off bottom
+    if (y + menuHeight > window.innerHeight - 12) {
+      y = rect.top - menuHeight - 4;
+      if (y < 12) y = 12;
+    }
+
+    setMenuConfig({ id: inv.id, x, y });
     setStatusMenuConfig(null);
   };
 
   const handleStatusBadgeClick = (e: React.MouseEvent, inv: Invoice) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    setStatusMenuConfig({
-      id: inv.id,
-      x: rect.left,
-      y: rect.bottom + 8
-    });
+    const menuWidth = 176; // w-44
+    const menuHeight = 150; 
+
+    // Center horizontally on the badge
+    let x = rect.left + (rect.width / 2) - (menuWidth / 2);
+    if (x + menuWidth > window.innerWidth - 12) {
+      x = window.innerWidth - menuWidth - 12;
+    }
+    if (x < 12) x = 12;
+
+    // Snug vertical gap
+    let y = rect.bottom + 4;
+    if (y + menuHeight > window.innerHeight - 12) {
+      y = rect.top - menuHeight - 4;
+    }
+
+    setStatusMenuConfig({ id: inv.id, x, y });
     setMenuConfig(null);
   };
 
@@ -111,25 +139,33 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
     setSearchQuery('');
   };
 
+  const getStatusClasses = (status: string) => {
+    switch(status) {
+      case 'PAID': return 'bg-green-100 text-green-700';
+      case 'OVERDUE': return 'bg-red-100 text-red-700';
+      default: return 'bg-orange-100 text-orange-700';
+    }
+  };
+
   return (
-    <div className="space-y-6 text-left relative overflow-visible">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 text-left relative">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-gray-900">Invoices</h2>
-          <p className="text-gray-500 font-medium">Track and manage all your sales transactions.</p>
+          <h2 className="text-xl md:text-2xl font-black text-gray-900">Invoices</h2>
+          <p className="text-sm text-gray-500 font-medium">Track and manage all your sales transactions.</p>
         </div>
         <div className="flex space-x-2">
           <div className="relative">
             <button 
               onClick={() => setShowFilterMenu(!showFilterMenu)}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+              className={`flex items-center space-x-2 px-3 md:px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
                 showFilterMenu || statusFilter !== 'ALL' || dateRangeFilter !== 'ALL'
                   ? 'bg-indigo-50 border-indigo-200 text-indigo-600' 
                   : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
               <Filter size={18} />
-              <span>Filter</span>
+              <span className="hidden xs:inline">Filter</span>
               {(statusFilter !== 'ALL' || dateRangeFilter !== 'ALL') && (
                 <span className="w-2 h-2 bg-indigo-600 rounded-full"></span>
               )}
@@ -138,20 +174,20 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
             {showFilterMenu && (
               <>
                 <div className="fixed inset-0 z-[150] bg-black/5" onClick={() => setShowFilterMenu(false)} />
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-3xl shadow-2xl border border-gray-100 z-[160] p-6 space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 top-full mt-2 w-64 md:w-72 bg-white rounded-3xl shadow-2xl border border-gray-100 z-[160] p-4 md:p-6 space-y-4 md:space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-black text-xs uppercase tracking-widest text-gray-400">Apply Filters</h4>
+                    <h4 className="font-black text-[10px] uppercase tracking-widest text-gray-400">Apply Filters</h4>
                     <button onClick={clearFilters} className="text-[10px] font-black text-indigo-600 hover:underline uppercase">Reset All</button>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2 md:space-y-3">
                     <p className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Status</p>
                     <div className="grid grid-cols-2 gap-2">
                       {['ALL', 'PAID', 'UNPAID', 'OVERDUE'].map((status) => (
                         <button
                           key={status}
                           onClick={() => setStatusFilter(status as any)}
-                          className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                          className={`px-2 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase transition-all border ${
                             statusFilter === status 
                               ? 'bg-indigo-600 border-indigo-600 text-white' 
                               : 'bg-gray-50 border-gray-100 text-gray-400 hover:border-gray-300'
@@ -163,7 +199,7 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
                     </div>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2 md:space-y-3">
                     <p className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Time Period</p>
                     <div className="space-y-1">
                       {[
@@ -175,7 +211,7 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
                         <button
                           key={range.id}
                           onClick={() => setDateRangeFilter(range.id as any)}
-                          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all ${
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] md:text-xs font-bold transition-all ${
                             dateRangeFilter === range.id 
                               ? 'bg-indigo-50 text-indigo-600' 
                               : 'text-gray-600 hover:bg-gray-50'
@@ -190,7 +226,7 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
 
                   <button 
                     onClick={() => setShowFilterMenu(false)}
-                    className="w-full bg-gray-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all"
+                    className="w-full bg-gray-900 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all"
                   >
                     Close
                   </button>
@@ -199,23 +235,23 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
             )}
           </div>
 
-          <button onClick={onAdd} className="flex items-center space-x-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
+          <button onClick={onAdd} className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
             <Plus size={18} />
             <span>New Invoice</span>
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-white rounded-[24px] md:rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-4 md:p-6 border-b border-gray-100">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
             <input 
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by invoice #, customer name..." 
-              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none focus:ring-2 focus:ring-indigo-500 rounded-2xl text-sm font-bold text-gray-700 placeholder:text-gray-300 outline-none transition-all"
+              placeholder="Search invoices..." 
+              className="w-full pl-10 pr-10 py-3 bg-gray-50 border-none focus:ring-2 focus:ring-indigo-500 rounded-2xl text-sm font-bold text-gray-700 placeholder:text-gray-300 outline-none transition-all"
             />
             {searchQuery && (
               <button 
@@ -228,7 +264,8 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
           </div>
         </div>
         
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[800px]">
             <thead className="bg-gray-50/50">
               <tr>
@@ -249,7 +286,6 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
                         <Search size={48} />
                       </div>
                       <p className="text-gray-500 font-bold text-lg mb-2">No invoices found.</p>
-                      <p className="text-gray-400 text-sm mb-6">Try adjusting your filters or search terms.</p>
                       <button onClick={clearFilters} className="text-indigo-600 font-black text-sm uppercase tracking-widest hover:underline">Reset All Filters</button>
                     </div>
                   </td>
@@ -274,10 +310,7 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
                       <td className="px-6 py-5 whitespace-nowrap text-center">
                         <button 
                           onClick={(e) => handleStatusBadgeClick(e, inv)}
-                          className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase shadow-sm transition-all hover:scale-105 active:scale-95 flex items-center mx-auto space-x-1 ${
-                            inv.status === 'PAID' ? 'bg-green-100 text-green-700' : 
-                            inv.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
-                          }`}
+                          className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase shadow-sm transition-all hover:scale-105 active:scale-95 flex items-center mx-auto space-x-1 ${getStatusClasses(inv.status)}`}
                         >
                           <span>{inv.status}</span>
                           <ChevronDown size={10} className="opacity-50" />
@@ -286,7 +319,7 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
                       <td className="px-6 py-5 whitespace-nowrap text-center">
                         <button 
                           onClick={(e) => handleMenuClick(e, inv)}
-                          className={`p-2.5 rounded-xl transition-all ${menuConfig?.id === inv.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                          className={`p-2 rounded-xl transition-all ${menuConfig?.id === inv.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
                         >
                           <MoreVertical size={20} />
                         </button>
@@ -298,13 +331,75 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {filteredInvoices.length === 0 ? (
+            <div className="p-12 text-center">
+               <div className="bg-gray-50 p-6 rounded-full inline-block text-gray-300 mb-4 border border-gray-100">
+                 <Search size={32} />
+               </div>
+               <p className="text-gray-500 font-bold text-sm mb-2">No invoices found.</p>
+               <button onClick={clearFilters} className="text-indigo-600 font-black text-[10px] uppercase tracking-widest hover:underline">Reset All Filters</button>
+            </div>
+          ) : (
+            filteredInvoices.map(inv => {
+              const customer = customers.find(c => c.id === inv.customerId);
+              return (
+                <div key={inv.id} className="p-4 hover:bg-gray-50 transition-colors" onClick={() => onEdit(inv)}>
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <span className="text-xs font-black text-indigo-600 block mb-1">{inv.invoiceNumber}</span>
+                      <div className="flex items-center text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                        <Calendar size={12} className="mr-1" />
+                        {new Date(inv.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                       <button 
+                        onClick={(e) => handleStatusBadgeClick(e, inv)}
+                        className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase shadow-sm flex items-center space-x-1 ${getStatusClasses(inv.status)}`}
+                      >
+                        <span>{inv.status}</span>
+                        <ChevronDown size={8} className="opacity-50" />
+                      </button>
+                      <button 
+                        onClick={(e) => handleMenuClick(e, inv)}
+                        className={`p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 ${menuConfig?.id === inv.id ? 'bg-indigo-600 text-white' : ''}`}
+                      >
+                        <MoreVertical size={18} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-end">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-black text-gray-400">
+                        {(customer?.name || 'W').charAt(0)}
+                      </div>
+                      <span className="text-sm font-black text-gray-900 truncate max-w-[150px]">
+                        {customer?.name || 'Walk-in Customer'}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                       <div className="text-lg font-black text-gray-900 flex items-center justify-end">
+                          <IndianRupee size={14} className="mr-0.5 opacity-50" />
+                          {inv.grandTotal.toLocaleString()}
+                       </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {statusMenuConfig && (
         <>
-          <div className="fixed inset-0 z-[100] bg-transparent" onClick={closeMenu} />
+          <div className="fixed inset-0 z-[200] bg-black/5" onClick={closeMenu} />
           <div 
-            className="fixed z-[110] w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            className="fixed z-[210] w-44 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
             style={{ top: statusMenuConfig.y, left: statusMenuConfig.x }}
           >
             <div className="px-4 py-2 border-b border-gray-50 bg-gray-50/50">
@@ -318,7 +413,7 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
               <button 
                 key={s.id}
                 onClick={() => handleStatusUpdate(statusMenuConfig.id, s.id as any)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors text-left`}
+                className={`w-full flex items-center space-x-3 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors text-left`}
               >
                 <s.icon size={14} className={s.color} />
                 <span>{s.label}</span>
@@ -330,57 +425,57 @@ const InvoiceList: React.FC<Props> = ({ invoices, customers, onAdd, onEdit, onPr
       
       {menuConfig && (
         <>
-          <div className="fixed inset-0 z-[100] bg-transparent" onClick={closeMenu} />
+          <div className="fixed inset-0 z-[200] bg-black/5" onClick={closeMenu} />
           <div 
-            className="fixed z-[110] w-56 bg-white rounded-[24px] shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            className="fixed z-[210] w-48 bg-white rounded-[20px] shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
             style={{ top: menuConfig.y, left: menuConfig.x }}
           >
             <button 
               onClick={() => handleAction('edit')}
-              className="w-full flex items-center space-x-3 px-5 py-4 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-left"
+              className="w-full flex items-center space-x-3 px-4 py-3 text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-left"
             >
-              <Edit2 size={16} className="text-indigo-500" />
+              <Edit2 size={14} className="text-indigo-500" />
               <span className="font-bold">Edit Invoice</span>
             </button>
             
             {invoices.find(i => i.id === menuConfig.id)?.status !== 'PAID' ? (
               <button 
                 onClick={() => handleAction('status_paid')}
-                className="w-full flex items-center space-x-3 px-5 py-4 text-sm text-green-600 hover:bg-green-50 transition-colors text-left"
+                className="w-full flex items-center space-x-3 px-4 py-3 text-xs text-green-600 hover:bg-green-50 transition-colors text-left"
               >
-                <CreditCard size={16} />
+                <CreditCard size={14} />
                 <span className="font-bold">Mark as Paid</span>
               </button>
             ) : (
               <button 
                 onClick={() => handleAction('status_unpaid')}
-                className="w-full flex items-center space-x-3 px-5 py-4 text-sm text-orange-600 hover:bg-orange-50 transition-colors text-left"
+                className="w-full flex items-center space-x-3 px-4 py-3 text-xs text-orange-600 hover:bg-orange-50 transition-colors text-left"
               >
-                <Clock size={16} />
+                <Clock size={14} />
                 <span className="font-bold">Mark as Unpaid</span>
               </button>
             )}
 
             <button 
               onClick={() => handleAction('print')}
-              className="w-full flex items-center space-x-3 px-5 py-4 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-left"
+              className="w-full flex items-center space-x-3 px-4 py-3 text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-left"
             >
-              <Printer size={16} className="text-gray-400" />
+              <Printer size={14} className="text-gray-400" />
               <span className="font-bold">Print Bill</span>
             </button>
             <button 
               onClick={() => handleAction('download')}
-              className="w-full flex items-center space-x-3 px-5 py-4 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-left"
+              className="w-full flex items-center space-x-3 px-4 py-3 text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-left"
             >
-              <Download size={16} className="text-gray-400" />
+              <Download size={14} className="text-gray-400" />
               <span className="font-bold">Download PDF</span>
             </button>
             <div className="h-px bg-gray-100 mx-2 my-1"></div>
             <button 
               onClick={() => handleAction('delete')}
-              className="w-full flex items-center space-x-3 px-5 py-4 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+              className="w-full flex items-center space-x-3 px-4 py-3 text-xs text-red-600 hover:bg-red-50 transition-colors text-left"
             >
-              <Trash2 size={16} />
+              <Trash2 size={14} />
               <span className="font-bold">Delete Bill</span>
             </button>
           </div>
