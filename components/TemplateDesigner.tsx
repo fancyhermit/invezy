@@ -86,10 +86,13 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
     const isTally = localTemplate.baseStyle === 'TALLY';
 
     // Dimensions based on formats
+    // Fixed: Added missing PaperFormat keys 'LETTER' and 'RECEIPT_80MM' to satisfy Record<PaperFormat, string>
     const formatStyles: Record<PaperFormat, string> = {
       'A4': 'min-h-[1123px] w-[800px]',
       'A5': 'min-h-[794px] w-[560px]',
-      'LEGAL': 'min-h-[1344px] w-[800px]'
+      'LEGAL': 'min-h-[1344px] w-[800px]',
+      'LETTER': 'min-h-[1056px] w-[800px]',
+      'RECEIPT_80MM': 'min-h-[600px] w-[320px]'
     };
 
     return (
@@ -112,7 +115,7 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Format & Layout</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {(['A4', 'A5', 'LEGAL'] as PaperFormat[]).map(f => (
+                  {(['A4', 'A5', 'LEGAL', 'LETTER', 'RECEIPT_80MM'] as PaperFormat[]).map(f => (
                     <button 
                       key={f} 
                       onClick={() => setLocalTemplate({...localTemplate, paperFormat: f})}
@@ -192,8 +195,8 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
                 className={`bg-white shadow-2xl transition-all duration-500 origin-top ${formatStyles[localTemplate.paperFormat]} ${isTally ? 'font-mono' : 'font-sans'} text-gray-900 relative`}
                 style={{ 
                   transform: `scale(${scale})`,
-                  padding: localTemplate.paperFormat === 'A5' ? '1rem' : '2.5rem',
-                  fontSize: localTemplate.paperFormat === 'A5' ? '12px' : '10px'
+                  padding: localTemplate.paperFormat === 'A5' ? '1rem' : localTemplate.paperFormat === 'RECEIPT_80MM' ? '1rem' : '2.5rem',
+                  fontSize: localTemplate.paperFormat === 'A5' ? '12px' : localTemplate.paperFormat === 'RECEIPT_80MM' ? '9px' : '10px'
                 }}
               >
                 {/* 1. Header Area */}
@@ -222,16 +225,18 @@ const TemplateDesigner: React.FC<Props> = ({ templates, onUpdate }) => {
                 </div>
 
                 {/* 2. Billing Info */}
-                <div className="grid grid-cols-2 gap-8 mb-8">
+                <div className={`grid grid-cols-1 ${localTemplate.paperFormat === 'RECEIPT_80MM' ? '' : 'sm:grid-cols-2'} gap-8 mb-8`}>
                     <div className={`${isTally ? 'border border-gray-200 p-4 bg-gray-50/50' : isMinimal ? 'pb-4 border-b' : ''}`}>
                        <p className="font-black text-[9px] uppercase tracking-widest text-indigo-400 mb-3">Customer Info</p>
                        <p className="text-base font-black">Client Business Ltd</p>
                        <p className="text-gray-500 mt-1 leading-relaxed">Office 402, Skyline Towers, Mumbai</p>
                     </div>
-                    <div className={`${isTally ? 'border border-gray-200 p-4 bg-gray-50/50' : isMinimal ? 'pb-4 border-b' : ''}`}>
-                       <p className="font-black text-[9px] uppercase tracking-widest text-indigo-400 mb-3">Shipment To</p>
-                       <p className="text-gray-400 italic">Self pickup from warehouse</p>
-                    </div>
+                    {localTemplate.paperFormat !== 'RECEIPT_80MM' && (
+                      <div className={`${isTally ? 'border border-gray-200 p-4 bg-gray-50/50' : isMinimal ? 'pb-4 border-b' : ''}`}>
+                         <p className="font-black text-[9px] uppercase tracking-widest text-indigo-400 mb-3">Shipment To</p>
+                         <p className="text-gray-400 italic">Self pickup from warehouse</p>
+                      </div>
+                    )}
                 </div>
 
                 {/* 3. ABOVE_ITEMS Custom Fields */}

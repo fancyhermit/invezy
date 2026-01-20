@@ -9,7 +9,7 @@ export enum AppView {
   DESIGN_TEMPLATES = 'DESIGN_TEMPLATES'
 }
 
-export type PaperFormat = 'A4' | 'A5' | 'LEGAL';
+export type PaperFormat = 'A4' | 'A5' | 'LEGAL' | 'LETTER' | 'RECEIPT_80MM';
 
 export interface CustomField {
   id: string;
@@ -62,6 +62,7 @@ export interface Customer {
   email: string;
   gstin?: string;
   address: string;
+  type?: 'REGULAR' | 'PREMIUM';
 }
 
 export interface LineItem {

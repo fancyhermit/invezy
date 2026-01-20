@@ -26,7 +26,7 @@ const MOCK_PRODUCTS: Product[] = [
 ];
 
 const MOCK_CUSTOMERS: Customer[] = [
-  { id: 'c1', name: 'John Doe', phone: '9876543210', email: 'john@example.com', address: '123 Baker St, London' },
+  { id: 'c1', name: 'John Doe', phone: '9876543210', email: 'john@example.com', address: '123 Baker St, London', type: 'PREMIUM' },
 ];
 
 const INITIAL_PROFILES: BusinessProfile[] = [
@@ -43,17 +43,17 @@ const INITIAL_PROFILES: BusinessProfile[] = [
 
 const App: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem('swipelite_invoices');
+    const saved = localStorage.getItem('invezy_invoices');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [profiles, setProfiles] = useState<BusinessProfile[]>(() => {
-    const saved = localStorage.getItem('swipelite_profiles');
+    const saved = localStorage.getItem('invezy_profiles');
     return saved ? JSON.parse(saved) : INITIAL_PROFILES;
   });
 
   const [templates, setTemplates] = useState<InvoiceTemplate[]>(() => {
-    const saved = localStorage.getItem('swipelite_templates');
+    const saved = localStorage.getItem('invezy_templates');
     return saved ? JSON.parse(saved) : [{
       id: 'default',
       name: 'Standard Tally',
@@ -66,36 +66,40 @@ const App: React.FC = () => {
   });
 
   const [activeProfileId, setActiveProfileId] = useState<string>(() => {
-    const saved = localStorage.getItem('swipelite_active_profile_id');
+    const saved = localStorage.getItem('invezy_active_profile_id');
     return saved || INITIAL_PROFILES[0].id;
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('swipelite_products');
+    const saved = localStorage.getItem('invezy_products');
     return saved ? JSON.parse(saved) : MOCK_PRODUCTS;
   });
 
   const [customers, setCustomers] = useState<Customer[]>(() => {
-    const saved = localStorage.getItem('swipelite_customers');
+    const saved = localStorage.getItem('invezy_customers');
     return saved ? JSON.parse(saved) : MOCK_CUSTOMERS;
   });
 
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | undefined>(undefined);
+  const [autoAction, setAutoAction] = useState<'PRINT' | 'DOWNLOAD' | null>(null);
 
-  useEffect(() => { localStorage.setItem('swipelite_invoices', JSON.stringify(invoices)); }, [invoices]);
-  useEffect(() => { localStorage.setItem('swipelite_profiles', JSON.stringify(profiles)); }, [profiles]);
-  useEffect(() => { localStorage.setItem('swipelite_active_profile_id', activeProfileId); }, [activeProfileId]);
-  useEffect(() => { localStorage.setItem('swipelite_products', JSON.stringify(products)); }, [products]);
-  useEffect(() => { localStorage.setItem('swipelite_customers', JSON.stringify(customers)); }, [customers]);
-  useEffect(() => { localStorage.setItem('swipelite_templates', JSON.stringify(templates)); }, [templates]);
+  useEffect(() => { localStorage.setItem('invezy_invoices', JSON.stringify(invoices)); }, [invoices]);
+  useEffect(() => { localStorage.setItem('invezy_profiles', JSON.stringify(profiles)); }, [profiles]);
+  useEffect(() => { localStorage.setItem('invezy_active_profile_id', activeProfileId); }, [activeProfileId]);
+  useEffect(() => { localStorage.setItem('invezy_products', JSON.stringify(products)); }, [products]);
+  useEffect(() => { localStorage.setItem('invezy_customers', JSON.stringify(customers)); }, [customers]);
+  useEffect(() => { localStorage.setItem('invezy_templates', JSON.stringify(templates)); }, [templates]);
 
   const activeProfile = profiles.find(p => p.id === activeProfileId) || profiles[0] || INITIAL_PROFILES[0];
   const activeTemplate = templates.find(t => t.isDefault) || templates[0];
 
   const navigate = (view: AppView) => {
-    if (view !== AppView.CREATE_INVOICE) setEditingInvoice(undefined);
+    if (view !== AppView.CREATE_INVOICE) {
+      setEditingInvoice(undefined);
+      setAutoAction(null);
+    }
     setCurrentView(view);
     setIsSidebarOpen(false);
   };
@@ -110,11 +114,26 @@ const App: React.FC = () => {
       setInvoices([newInvoice, ...invoices]);
     }
     setEditingInvoice(undefined);
+    setAutoAction(null);
     setCurrentView(AppView.INVOICES);
+  };
+
+  const handleUpdateInvoice = (updated: Invoice) => {
+    setInvoices(invoices.map(inv => inv.id === updated.id ? updated : inv));
+  };
+
+  const handleActionInvoice = (inv: Invoice, action: 'PRINT' | 'DOWNLOAD') => {
+    setEditingInvoice(inv);
+    setAutoAction(action);
+    setCurrentView(AppView.CREATE_INVOICE);
   };
 
   const handleUpdateProduct = (updated: Product) => setProducts(products.map(p => p.id === updated.id ? updated : p));
   const handleAddProduct = (newProd: Product) => setProducts([...products, newProd]);
+  
+  const handleUpdateCustomers = (updated: Customer[]) => {
+    setCustomers([...updated]);
+  };
 
   const NavItem = ({ view, icon: Icon, label }: { view: AppView, icon: any, label: string }) => (
     <button
@@ -131,14 +150,14 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden text-left">
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 h-full flex flex-col">
           <div className="flex items-center space-x-3 mb-8 px-2">
             <div className="bg-indigo-600 p-2 rounded-lg text-white">
               <Building2 size={24} />
             </div>
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">SwipeLite</h1>
+            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Invezy</h1>
           </div>
           
           <nav className="flex-1 space-y-2">
@@ -171,7 +190,18 @@ const App: React.FC = () => {
         <div className="flex-1 overflow-y-auto no-scrollbar p-4 md:p-8">
           <div className="max-w-6xl mx-auto h-full">
             {currentView === AppView.DASHBOARD && <Dashboard invoices={invoices} products={products} onNewSale={() => navigate(AppView.CREATE_INVOICE)} />}
-            {currentView === AppView.INVOICES && <InvoiceList invoices={invoices} onAdd={() => navigate(AppView.CREATE_INVOICE)} onEdit={(inv) => { setEditingInvoice(inv); navigate(AppView.CREATE_INVOICE); }} onDelete={(id) => setInvoices(invoices.filter(i => i.id !== id))} />}
+            {currentView === AppView.INVOICES && (
+              <InvoiceList 
+                invoices={invoices} 
+                customers={customers}
+                onAdd={() => navigate(AppView.CREATE_INVOICE)} 
+                onEdit={(inv) => { setEditingInvoice(inv); navigate(AppView.CREATE_INVOICE); }} 
+                onPrint={(inv) => handleActionInvoice(inv, 'PRINT')}
+                onDownload={(inv) => handleActionInvoice(inv, 'DOWNLOAD')}
+                onDelete={(id) => setInvoices(invoices.filter(i => i.id !== id))} 
+                onUpdateInvoice={handleUpdateInvoice}
+              />
+            )}
             {currentView === AppView.CREATE_INVOICE && (
               <InvoiceForm 
                 products={products} 
@@ -180,13 +210,14 @@ const App: React.FC = () => {
                 activeTemplate={activeTemplate}
                 allTemplates={templates}
                 initialInvoice={editingInvoice}
+                autoAction={autoAction}
                 onSave={handleSaveInvoice}
                 onCancel={() => navigate(AppView.INVOICES)}
               />
             )}
             {currentView === AppView.DESIGN_TEMPLATES && <TemplateDesigner templates={templates} onUpdate={setTemplates} />}
             {currentView === AppView.PRODUCTS && <ProductList products={products} onUpdate={handleUpdateProduct} onAdd={handleAddProduct} />}
-            {currentView === AppView.CUSTOMERS && <CustomerList customers={customers} />}
+            {currentView === AppView.CUSTOMERS && <CustomerList customers={customers} onUpdate={handleUpdateCustomers} />}
             {currentView === AppView.PROFILES && <ProfileManager profiles={profiles} activeId={activeProfileId} onSwitch={setActiveProfileId} onUpdate={setProfiles} />}
           </div>
         </div>

@@ -1,61 +1,212 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Customer } from '../types';
-import { UserPlus, Mail, Phone, MapPin } from 'lucide-react';
+import { UserPlus, Mail, Phone, MapPin, Search, X, Save, Trash2, History } from 'lucide-react';
 
 interface Props {
   customers: Customer[];
+  onUpdate: (updated: Customer[]) => void;
 }
 
-const CustomerList: React.FC<Props> = ({ customers }) => {
+const CustomerList: React.FC<Props> = ({ customers, onUpdate }) => {
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [formData, setFormData] = useState<Partial<Customer>>({});
+
+  const filteredCustomers = customers.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.phone.includes(searchTerm)
+  );
+
+  const handleOpenAdd = () => {
+    setEditingCustomer(null);
+    setFormData({ name: '', phone: '', email: '', address: '', type: 'REGULAR' });
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEdit = (c: Customer) => {
+    setEditingCustomer(c);
+    setFormData(c);
+    setIsFormOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.name || !formData.phone) {
+      alert("Name and Phone are required.");
+      return;
+    }
+    
+    if (editingCustomer) {
+      const updatedList = customers.map(c => c.id === editingCustomer.id ? { ...editingCustomer, ...formData } as Customer : c);
+      onUpdate([...updatedList]);
+    } else {
+      const newCustomer: Customer = {
+        ...formData,
+        id: Math.random().toString(36).substr(2, 9),
+      } as Customer;
+      onUpdate([...customers, newCustomer]);
+    }
+    setIsFormOpen(false);
+  };
+
+  const confirmDelete = (id: string) => {
+    if (window.confirm("Permanently delete this contact? This will not affect existing invoices.")) {
+      const remaining = customers.filter(c => c.id !== id);
+      onUpdate([...remaining]);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 overflow-visible">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Customers</h2>
-          <p className="text-gray-500">Maintain relationships and track billing history.</p>
+        <div className="text-left">
+          <h2 className="text-2xl font-black text-gray-900">Customers</h2>
+          <p className="text-gray-500 font-medium">Maintain relationships and track billing history.</p>
         </div>
-        <button className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:bg-indigo-700 transition-all">
+        <button 
+          type="button"
+          onClick={handleOpenAdd} 
+          className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black shadow-lg hover:bg-indigo-700 transition-all active:scale-95"
+        >
           <UserPlus size={20} />
           <span>Add Customer</span>
         </button>
       </div>
 
+      <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 p-6 flex items-center">
+        <Search className="text-gray-400 mr-4" size={20} />
+        <input 
+          type="text" 
+          placeholder="Search by name or phone..." 
+          className="flex-1 bg-transparent border-none focus:ring-0 outline-none font-bold text-gray-700 placeholder:text-gray-300"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+        />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {customers.map(c => (
-          <div key={c.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-center space-x-4 mb-6">
-              <div className="w-14 h-14 bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-xl">
-                {c.name.charAt(0)}
+        {filteredCustomers.length === 0 ? (
+          <div className="md:col-span-2 py-20 text-center text-gray-400 font-bold bg-white rounded-[40px] border-2 border-dashed border-gray-100">
+            No contacts matching your search
+          </div>
+        ) : (
+          filteredCustomers.map(c => (
+            <div key={c.id} className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm hover:shadow-xl transition-all group relative animate-in zoom-in-95 duration-300">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-[20px] flex items-center justify-center font-black text-2xl shadow-lg shadow-indigo-100">
+                    {c.name.charAt(0)}
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-black text-xl text-gray-900">{c.name}</h3>
+                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest inline-block mt-1 ${c.type === 'PREMIUM' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500'}`}>
+                      {c.type || 'REGULAR'} CLIENT
+                    </span>
+                  </div>
+                </div>
+                <div className="flex space-x-1">
+                   <button 
+                    type="button"
+                    onClick={() => confirmDelete(c.id)} 
+                    className="p-4 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
+                    title="Delete Contact"
+                   >
+                     <Trash2 size={24} />
+                   </button>
+                </div>
               </div>
+
+              <div className="space-y-4 text-left">
+                <div className="flex items-center text-sm text-gray-600 space-x-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-50">
+                  <Phone size={18} className="text-indigo-400" />
+                  <span className="font-bold">{c.phone}</span>
+                </div>
+                <div className="flex items-center text-sm text-gray-600 space-x-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-50">
+                  <Mail size={18} className="text-indigo-400" />
+                  <span className="font-medium">{c.email}</span>
+                </div>
+                <div className="flex items-start text-sm text-gray-600 space-x-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-50">
+                  <MapPin size={18} className="text-indigo-400 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed font-medium">{c.address}</span>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-gray-100 flex justify-between items-center">
+                <button type="button" className="flex items-center space-x-2 text-sm font-black text-indigo-600 hover:scale-105 transition-all">
+                  <History size={16} />
+                  <span>VIEW HISTORY</span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => handleOpenEdit(c)}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[2px] shadow-lg shadow-indigo-100 hover:scale-105 transition-all active:scale-95"
+                >
+                  Edit Details
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {isFormOpen && (
+        <div className="fixed inset-0 z-[400] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-[40px] w-full max-w-lg p-10 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex justify-between items-center mb-8">
+               <h3 className="text-2xl font-black text-gray-900">{editingCustomer ? 'Update Profile' : 'New Customer'}</h3>
+               <button onClick={() => setIsFormOpen(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"><X size={24} /></button>
+            </div>
+
+            <div className="space-y-6 text-left">
               <div>
-                <h3 className="font-bold text-lg text-gray-900">{c.name}</h3>
-                <p className="text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-full inline-block mt-1 uppercase tracking-widest">Premium Client</p>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Customer Name</label>
+                <input type="text" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-lg" placeholder="e.g. Acme Corp"/>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Phone</label>
+                  <input type="text" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-indigo-500 outline-none font-bold"/>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Email</label>
+                  <input type="email" value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"/>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Client Type</label>
+                <div className="flex space-x-2">
+                   {['REGULAR', 'PREMIUM'].map(type => (
+                     <button 
+                        key={type}
+                        type="button"
+                        onClick={() => setFormData({...formData, type: type as any})}
+                        className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${formData.type === type ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+                     >
+                       {type}
+                     </button>
+                   ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Address</label>
+                <textarea value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-indigo-500 outline-none h-24 text-sm font-medium resize-none" placeholder="Enter billing address..."/>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center text-sm text-gray-500 space-x-3 bg-gray-50 p-3 rounded-2xl">
-                <Phone size={16} className="text-gray-400" />
-                <span>{c.phone}</span>
-              </div>
-              <div className="flex items-center text-sm text-gray-500 space-x-3 bg-gray-50 p-3 rounded-2xl">
-                <Mail size={16} className="text-gray-400" />
-                <span>{c.email}</span>
-              </div>
-              <div className="flex items-center text-sm text-gray-500 space-x-3 bg-gray-50 p-3 rounded-2xl">
-                <MapPin size={16} className="text-gray-400 shrink-0" />
-                <span className="truncate">{c.address}</span>
-              </div>
-            </div>
-
-            <div className="mt-6 pt-6 border-t border-gray-100 flex justify-between">
-              <button className="text-sm font-bold text-indigo-600 hover:underline">View History</button>
-              <button className="text-sm font-bold text-gray-400 hover:text-gray-600">Edit Details</button>
+            <div className="mt-10 flex justify-end space-x-4">
+               <button type="button" onClick={() => setIsFormOpen(false)} className="px-6 py-2 text-gray-400 font-bold hover:text-gray-600 transition-colors">Cancel</button>
+               <button type="button" onClick={handleSave} className="flex items-center space-x-3 bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
+                 <Save size={20} />
+                 <span>{editingCustomer ? 'Update' : 'Create Customer'}</span>
+               </button>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
